@@ -1,3 +1,4 @@
+
 FROM php:8.2-fpm
 
 # Installer les dépendances système
@@ -28,40 +29,22 @@ WORKDIR /var/www
 # Copier les fichiers du projet
 COPY . /var/www
 
-# Créer le fichier .env si nécessaire
-RUN if [ ! -f .env ]; then cp .env.example .env; fi
-
 # Installer les dépendances PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader
 
 # Installer les dépendances NPM et build les assets
-RUN npm install
-RUN npm run build
-
-# Vérifier que le manifest existe
-RUN if [ ! -f /var/www/public/build/manifest.json ]; then \
-    echo "ERREUR: Le manifest Vite n'a pas été créé!" && \
-    exit 1; \
-fi
+RUN npm install && npm run build
 
 # Donner les permissions
 RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage \
-    && chmod -R 755 /var/www/bootstrap/cache
-
-# S'assurer que les assets sont accessibles
-RUN chmod -R 755 /var/www/public
+    && chmod -R 755 /var/www/storage
 
 # Exposer le port
 EXPOSE 8000
 
 # Commande de démarrage
-CMD php artisan config:clear && \
-    php artisan route:clear && \
-    php artisan view:clear && \
-    php artisan config:cache && \
+CMD php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
     php artisan migrate --force && \
-    php artisan storage:link && \
     php artisan serve --host=0.0.0.0 --port=8000
