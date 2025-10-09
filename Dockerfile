@@ -28,22 +28,34 @@ WORKDIR /var/www
 # Copier les fichiers du projet
 COPY . /var/www
 
+# Créer le fichier .env si nécessaire
+RUN if [ ! -f .env ]; then cp .env.example .env; fi
+
 # Installer les dépendances PHP
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Installer les dépendances NPM et build les assets
-RUN npm install && npm run build
+RUN npm ci --include=dev
+RUN npm run build
 
 # Donner les permissions
 RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage
+    && chmod -R 755 /var/www/storage \
+    && chmod -R 755 /var/www/bootstrap/cache
+
+# S'assurer que les assets sont accessibles
+RUN chmod -R 755 /var/www/public
 
 # Exposer le port
 EXPOSE 8000
 
 # Commande de démarrage
-CMD php artisan config:cache && \
+CMD php artisan config:clear && \
+    php artisan route:clear && \
+    php artisan view:clear && \
+    php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
-    php artisan migrate --force && \
+    php artisan migrate:fresh --force --seed && \
+    php artisan storage:link && \
     php artisan serve --host=0.0.0.0 --port=8000
