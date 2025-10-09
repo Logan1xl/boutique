@@ -35,8 +35,14 @@ RUN if [ ! -f .env ]; then cp .env.example .env; fi
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Installer les dépendances NPM et build les assets
-RUN npm ci --include=dev
+RUN npm install
 RUN npm run build
+
+# Vérifier que le manifest existe
+RUN if [ ! -f /var/www/public/build/manifest.json ]; then \
+    echo "ERREUR: Le manifest Vite n'a pas été créé!" && \
+    exit 1; \
+fi
 
 # Donner les permissions
 RUN chown -R www-data:www-data /var/www \
